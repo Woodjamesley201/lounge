@@ -36,10 +36,10 @@ import app.lounge.ui.theme.Ember
 /**
  * A pane of Lounge glass.
  *
- * On API 31+ the pane blurs a slice of [drawAtmosphere] with [RenderEffect],
- * the same dusk painted behind the UI, so the material has something to
- * refract. Older APIs keep the tint, the specular streak, and the rim,
- * without the blur. Previews skip the platform effect.
+ * Where [GlassBlurPolicy] allows it, the pane blurs a slice of [drawAtmosphere]
+ * with [RenderEffect]. Samsung devices and Android 16 do not take that path:
+ * platform blur aborts the process during the first composition. They keep
+ * the dusk slice, a milk veil, the specular streak, and the rim.
  *
  * [refract] is false over a video or photo, where the surface should stay
  * translucent and let the picture show through instead of painting the room.
@@ -55,7 +55,16 @@ fun LiquidGlass(
     val shape = androidx.compose.foundation.shape.RoundedCornerShape(corner)
     val density = LocalDensity.current.density
     val inspection = LocalInspectionMode.current
-    val blur = remember(inspection, density) { frostEffect(inspection, density) }
+    val deviceBlur = !inspection && GlassBlurPolicy.deviceAllowsHardwareBlur(
+        sdkInt = Build.VERSION.SDK_INT,
+        manufacturer = Build.MANUFACTURER,
+        brand = Build.BRAND,
+    )
+    // Created only when the device policy allows it. remember still runs
+    // unconditionally so composition stays stable.
+    val blur = remember(deviceBlur, density) {
+        if (!deviceBlur) null else frostEffect(density)
+    }
     var origin by remember { mutableStateOf(Offset.Zero) }
     var root by remember { mutableStateOf(IntSize.Zero) }
     var placed by remember { mutableStateOf(false) }
@@ -63,40 +72,32 @@ fun LiquidGlass(
     Box(
         modifier
             .onGloballyPositioned { coords ->
-                origin = coords.positionInRoot()
-                root = coords.findRootCoordinates().size
-                placed = true
-            }
-            .graphicsLayer {
-                shadowElevation = (8.dp + 10.dp * emphasis).toPx()
-                this.shape = shape
-                clip = false
-                ambientShadowColor = Color.Black.copy(alpha = 0.42f)
-                spotShadowColor = Color.Black.copy(alpha = 0.55f)
-            },
-    ) {
-        Box(
-            Modifier
-                .matchParentSize()
-                .graphicsLayer {
-                    this.shape = shape
-                    clip = true
-                    if (refract && blur != null) {
-                        renderEffect = blur
-                    }
-                },
-        ) {
-            if (refract && placed && root.width > 0 && root.height > 0) {
-                androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-                    drawAtmosphere(origin, Size(root.width.toFloat(), root.height.toFloat()))
+                runCatching {
+                    origin = coords.positionInRoot()
+                    root = coords.findRootCoordinates().size
+                    placed = true
                 }
             }
-            val veil = when {
-                !refract -> Color.Black.copy(alpha = 0.40f)
-                blur != null -> Color.White.copy(alpha = 0.08f)
-                else -> Color(0xFFD7E3F4).copy(alpha = 0.22f)
+            .then(elevationLayer(deviceBlur, emphasis, shape)),
+    ) {
+        Box(Modifier.matchParentSize().clip(shape)) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .then(blurLayer(blur, refract)),
+            ) {
+                if (refract && placed && root.width > 0 && root.height > 0) {
+                    androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                        drawAtmosphere(origin, Size(root.width.toFloat(), root.height.toFloat()))
+                    }
+                }
+                val veil = when {
+                    !refract -> Color.Black.copy(alpha = 0.40f)
+                    blur != null -> Color.White.copy(alpha = 0.08f)
+                    else -> Color(0xFFD7E3F4).copy(alpha = 0.22f)
+                }
+                Box(Modifier.fillMaxSize().background(veil))
             }
-            Box(Modifier.fillMaxSize().background(veil))
         }
         Box(Modifier.clip(shape)) {
             content()
@@ -105,13 +106,54 @@ fun LiquidGlass(
     }
 }
 
-private fun frostEffect(
-    inspection: Boolean,
-    density: Float,
-): androidx.compose.ui.graphics.RenderEffect? {
-    if (inspection || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return null
+/**
+ * Elevation uses a platform outline. Skip it on devices that already cannot
+ * take hardware blur, so the first frame stays on the canvas path that 0.1.0 used.
+ * A zero-size outline also crashes [android.graphics.Outline.setRoundRect].
+ */
+private fun elevationLayer(
+    deviceBlur: Boolean,
+    emphasis: Float,
+    shape: androidx.compose.ui.graphics.Shape,
+): Modifier {
+    if (!deviceBlur) return Modifier
+    return Modifier.graphicsLayer {
+        if (GlassBlurPolicy.layerIsLargeEnough(size.width, size.height)) {
+            shadowElevation = (8.dp + 10.dp * emphasis).toPx()
+            this.shape = shape
+            ambientShadowColor = Color.Black.copy(alpha = 0.42f)
+            spotShadowColor = Color.Black.copy(alpha = 0.55f)
+        } else {
+            shadowElevation = 0f
+        }
+        clip = false
+    }
+}
+
+/**
+ * Blur sits on its own layer, with no outline clip. Clipping the same
+ * RenderNode that is blurred is the combination Samsung's HWUI aborts on.
+ * The parent [clip] rounds the result after the blur.
+ */
+private fun blurLayer(
+    blur: androidx.compose.ui.graphics.RenderEffect?,
+    refract: Boolean,
+): Modifier {
+    if (blur == null || !refract) return Modifier
+    return Modifier.graphicsLayer {
+        clip = false
+        renderEffect = if (GlassBlurPolicy.layerIsLargeEnough(size.width, size.height)) {
+            blur
+        } else {
+            null
+        }
+    }
+}
+
+private fun frostEffect(density: Float): androidx.compose.ui.graphics.RenderEffect? {
     return runCatching {
         val radius = (16f * density).coerceIn(12f, 34f)
+        if (radius < GlassBlurPolicy.MIN_LAYER_PX) return null
         RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.CLAMP).asComposeRenderEffect()
     }.getOrNull()
 }

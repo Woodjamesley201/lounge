@@ -1,6 +1,7 @@
 package app.lounge.ui.glass
 
 import android.net.Uri
+import android.os.Build
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,9 +61,18 @@ fun TitleArtwork(
     modifier: Modifier = Modifier,
     softenEdges: Boolean = true,
 ) {
+    // Offscreen compositing is another graphics-layer. Skip it where platform
+    // blur is already unsafe, and draw the picture with the normal canvas.
+    val soften = softenEdges && GlassBlurPolicy.deviceAllowsHardwareBlur(
+        sdkInt = Build.VERSION.SDK_INT,
+        manufacturer = Build.MANUFACTURER,
+        brand = Build.BRAND,
+    )
     Canvas(
-        modifier.graphicsLayer {
-            compositingStrategy = CompositingStrategy.Offscreen
+        if (soften) {
+            modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        } else {
+            modifier
         },
     ) {
         if (image != null) {
@@ -77,7 +87,7 @@ fun TitleArtwork(
                 ArtMotif.STILL -> drawStill()
             }
         }
-        if (softenEdges) {
+        if (soften) {
             drawRect(
                 brush = Brush.radialGradient(
                     colorStops = arrayOf(
