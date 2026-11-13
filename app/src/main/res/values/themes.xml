@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.Lounge" parent="android:Theme.Material.NoActionBar">
-        <item name="android:statusBarColor">#0E0C0A</item>
-        <item name="android:navigationBarColor">#0E0C0A</item>
-        <item name="android:windowBackground">#0E0C0A</item>
-        <item name="android:colorPrimary">#E8A05C</item>
-        <item name="android:colorAccent">#E8A05C</item>
+        <item name="android:statusBarColor">#070A14</item>
+        <item name="android:navigationBarColor">#070A14</item>
+        <item name="android:windowBackground">#070A14</item>
+        <item name="android:colorPrimary">#E6B15E</item>
+        <item name="android:colorAccent">#E6B15E</item>
     </style>
 </resources>

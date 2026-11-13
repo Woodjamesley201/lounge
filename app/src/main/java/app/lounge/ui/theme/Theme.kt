@@ -21,23 +21,23 @@ import androidx.compose.ui.unit.sp
 /**
  * Lounge visual language. Owner: UI Isaiah.
  *
- * Warm, dark, and calm — a living room at dusk, not a consumer electronics
- * storefront. Ember and cream on a walnut-black field. This is original:
- * it does not follow Apple tvOS, Google TV, or any other commercial chrome.
+ * Dusk, glass, and a warm lamp. Panels are translucent and refractive.
+ * The wordmark stays a serif "Lounge" with the floor lamp — this is not
+ * a tvOS or iOS home screen, and it does not use a system font.
  */
 object Ember {
-    val Night = Color(0xFF0E0C0A)
-    val NightDeep = Color(0xFF090807)
-    val Raised = Color(0xFF1A1714)
-    val Recess = Color(0xFF241F1A)
-    val Line = Color(0xFF3A342C)
-    val Amber = Color(0xFFE8A05C)
-    val AmberBright = Color(0xFFF0C48A)
-    val AmberDeep = Color(0xFFC4783A)
-    val Cream = Color(0xFFF3EDE4)
-    val CreamMuted = Color(0xFFB5ADA3)
-    val CreamDim = Color(0xFF8A837A)
-    val Scrim = Color(0xCC0E0C0A)
+    val Night = Color(0xFF070A14)
+    val NightDeep = Color(0xFF05070F)
+    val Raised = Color(0xFF161E30)
+    val Recess = Color(0xFF1C2638)
+    val Line = Color(0xFF3A4760)
+    val Amber = Color(0xFFE6B15E)
+    val AmberBright = Color(0xFFF6D7A2)
+    val AmberDeep = Color(0xFFC4843A)
+    val Cream = Color(0xFFF4F7FB)
+    val CreamMuted = Color(0xFFC5D0E0)
+    val CreamDim = Color(0xFF8E9BB0)
+    val Scrim = Color(0xCC070A14)
 }
 
 data class LoungeMetrics(
@@ -66,16 +66,16 @@ val TabletMetrics = LoungeMetrics(
     tileWidth = 196.dp,
     tileHeight = 110.dp,
     photoSize = 132.dp,
-    tileCorner = 14.dp,
+    tileCorner = 22.dp,
     tileGap = 14.dp,
-    focusPad = 8.dp,
+    focusPad = 12.dp,
     focusStroke = 2.dp,
-    focusScale = 1.04f,
+    focusScale = 1.045f,
     titleSize = 34.sp,
     rowTitleSize = 17.sp,
     tileTitleSize = 14.sp,
     eyebrowSize = 13.sp,
-    heroHeight = 196.dp,
+    heroHeight = 220.dp,
 )
 
 val TelevisionMetrics = LoungeMetrics(
@@ -85,16 +85,16 @@ val TelevisionMetrics = LoungeMetrics(
     tileWidth = 304.dp,
     tileHeight = 171.dp,
     photoSize = 188.dp,
-    tileCorner = 16.dp,
+    tileCorner = 26.dp,
     tileGap = 22.dp,
     focusPad = 22.dp,
     focusStroke = 4.dp,
-    focusScale = 1.08f,
+    focusScale = 1.06f,
     titleSize = 50.sp,
     rowTitleSize = 22.sp,
     tileTitleSize = 18.sp,
     eyebrowSize = 16.sp,
-    heroHeight = 0.dp, // TV is sparse rows, no hero band
+    heroHeight = 300.dp,
 )
 
 val LocalLoungeMetrics = staticCompositionLocalOf { TabletMetrics }
