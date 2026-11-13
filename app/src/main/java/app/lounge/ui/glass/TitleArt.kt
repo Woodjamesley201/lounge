@@ -63,7 +63,8 @@ fun TitleArtwork(
 ) {
     // Offscreen compositing is another graphics-layer. Skip it where platform
     // blur is already unsafe, and draw the picture with the normal canvas.
-    val soften = softenEdges && GlassBlurPolicy.deviceAllowsHardwareBlur(
+    val conservative = LocalConservativeGraphics.current
+    val soften = softenEdges && !conservative && GlassBlurPolicy.deviceAllowsHardwareBlur(
         sdkInt = Build.VERSION.SDK_INT,
         manufacturer = Build.MANUFACTURER,
         brand = Build.BRAND,
@@ -77,6 +78,8 @@ fun TitleArtwork(
     ) {
         if (image != null) {
             drawCropped(image)
+        } else if (conservative) {
+            drawPlainStudy(motif)
         } else {
             when (motif) {
                 ArtMotif.MEADOW -> drawMeadow()
@@ -119,6 +122,18 @@ private fun DrawScope.drawCropped(image: ImageBitmap) {
         ),
         dstSize = IntSize(dw.roundToInt().coerceAtLeast(1), dh.roundToInt().coerceAtLeast(1)),
     )
+}
+
+private fun DrawScope.drawPlainStudy(motif: ArtMotif) {
+    val colors = when (motif) {
+        ArtMotif.MEADOW -> listOf(Color(0xFFF6D7A4), Color(0xFF7EAE62), Color(0xFF245C3A))
+        ArtMotif.FROST -> listOf(Color(0xFF07111C), Color(0xFF163A5C), Color(0xFFD5E6F2))
+        ArtMotif.FORGE -> listOf(Color(0xFF1A120F), Color(0xFFE25A28), Color(0xFF120E10))
+        ArtMotif.DREAM -> listOf(Color(0xFF3A2468), Color(0xFF140C22))
+        ArtMotif.REEL -> listOf(Color(0xFF1C2638), Color(0xFFE6B15E), Color(0xFF070A14))
+        ArtMotif.STILL -> listOf(Color(0xFF161E30), Color(0xFF3A4760))
+    }
+    drawRect(Brush.verticalGradient(colors))
 }
 
 private fun DrawScope.drawMeadow() {

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import app.lounge.ui.glass.LocalConservativeGraphics
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -33,24 +34,35 @@ fun EmberLamp(
     size: Dp = 28.dp,
     lit: Boolean = true,
 ) {
+    val conservative = LocalConservativeGraphics.current
     Canvas(modifier = modifier.size(size)) {
         val w = this.size.width
         val h = this.size.height
         val cx = w / 2f
         if (lit) {
-            drawOval(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Ember.AmberBright.copy(alpha = 0.45f),
-                        Ember.Amber.copy(alpha = 0.16f),
-                        Color.Transparent,
+            val glow = Size(w, h * 0.55f)
+            val glowAt = Offset(cx - w * 0.5f, h * 0.38f)
+            if (conservative) {
+                drawOval(
+                    color = Ember.Amber.copy(alpha = 0.22f),
+                    topLeft = glowAt,
+                    size = glow,
+                )
+            } else {
+                drawOval(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Ember.AmberBright.copy(alpha = 0.45f),
+                            Ember.Amber.copy(alpha = 0.16f),
+                            Color.Transparent,
+                        ),
+                        center = Offset(cx, h * 0.58f),
+                        radius = w * 0.55f,
                     ),
-                    center = Offset(cx, h * 0.58f),
-                    radius = w * 0.55f,
-                ),
-                topLeft = Offset(cx - w * 0.5f, h * 0.38f),
-                size = Size(w, h * 0.55f),
-            )
+                    topLeft = glowAt,
+                    size = glow,
+                )
+            }
         }
         // Shade (shallow cone)
         val shade = Path().apply {

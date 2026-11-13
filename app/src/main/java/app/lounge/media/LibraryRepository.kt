@@ -26,7 +26,8 @@ class LibraryRepository(
     private val playback: PlaybackStore,
 ) {
     private val appContext = context.applicationContext
-    private val connectivity = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    private val connectivity =
+        appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
     private val accessPrefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     private val _snapshot = MutableStateFlow(publishValue(scanning = false))
@@ -54,14 +55,14 @@ class LibraryRepository(
         val request = NetworkRequest.Builder()
             .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             .build()
-        runCatching { connectivity.registerNetworkCallback(request, networkCallback) }
+        runCatching { connectivity?.registerNetworkCallback(request, networkCallback) }
         refresh()
     }
 
     fun stop() {
         if (!started) return
         started = false
-        runCatching { connectivity.unregisterNetworkCallback(networkCallback) }
+        runCatching { connectivity?.unregisterNetworkCallback(networkCallback) }
         scope?.cancel()
         scope = null
     }
@@ -116,8 +117,9 @@ class LibraryRepository(
     }
 
     private fun isOnline(): Boolean {
-        val network = connectivity.activeNetwork ?: return false
-        val caps = connectivity.getNetworkCapabilities(network) ?: return false
+        val manager = connectivity ?: return false
+        val network = manager.activeNetwork ?: return false
+        val caps = manager.getNetworkCapabilities(network) ?: return false
         return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 

@@ -3,6 +3,7 @@ package app.lounge.ui.glass
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -13,15 +14,42 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import app.lounge.ui.theme.Ember
 
 /**
- * Dusk room behind the glass. The same function is drawn full-screen and,
- * clipped inside a panel, as the slice that panel refracts — so a card
- * lower on the page catches a different color than one near the lamp.
+ * True on Samsung and Android 16, where stacked radial shaders abort the
+ * GPU during the first frame. Studio previews leave this false.
+ */
+val LocalConservativeGraphics = staticCompositionLocalOf { false }
+
+/**
+ * Dusk room behind the glass. On devices that can take it, the same function
+ * is drawn full-screen and, clipped inside a panel, as the slice that panel
+ * refracts. Samsung and Android 16 get a linear dusk only — the radial stack
+ * was still killing the Galaxy Tab A9 after platform blur was removed.
  */
 @Composable
 fun Atmosphere(modifier: Modifier = Modifier) {
+    val conservative = LocalConservativeGraphics.current
     Canvas(modifier.fillMaxSize()) {
-        drawAtmosphere(Offset.Zero, size)
+        if (conservative) drawPlainRoom() else drawAtmosphere(Offset.Zero, size)
     }
+}
+
+private fun DrawScope.drawPlainRoom() {
+    drawRect(
+        brush = Brush.verticalGradient(
+            colors = listOf(
+                Color(0xFF1A2748),
+                Color(0xFF10182E),
+                Color(0xFF14110F),
+            ),
+        ),
+    )
+    drawRect(
+        brush = Brush.verticalGradient(
+            colors = listOf(Ember.Amber.copy(alpha = 0.16f), Color.Transparent),
+            startY = 0f,
+            endY = size.height * 0.45f,
+        ),
+    )
 }
 
 fun DrawScope.drawAtmosphere(origin: Offset, root: Size) {

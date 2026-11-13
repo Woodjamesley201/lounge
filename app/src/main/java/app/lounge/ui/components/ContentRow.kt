@@ -48,6 +48,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.lounge.media.MediaEntry
 import app.lounge.ui.glass.LiquidGlass
+import app.lounge.ui.glass.LocalConservativeGraphics
 import app.lounge.ui.glass.TitleArtwork
 import app.lounge.ui.glass.glassFocus
 import app.lounge.ui.glass.rememberLocalArtwork
@@ -142,6 +143,7 @@ fun TileCard(
         sizePx = if (metrics.isTelevision) 720 else 480,
     )
     val description = entry.subtitle?.let { "${entry.title}, $it" } ?: entry.title
+    val conservative = LocalConservativeGraphics.current
 
     Column(
         modifier = modifier
@@ -149,10 +151,16 @@ fun TileCard(
             .padding(metrics.focusPad)
             .bringIntoViewRequester(bringIntoView)
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
+            .then(
+                if (conservative) {
+                    Modifier
+                } else {
+                    Modifier.graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    }
+                },
+            )
             .glassFocus(emphasis, metrics.tileCorner, metrics.focusStroke)
             .clickable(
                 interactionSource = interaction,
