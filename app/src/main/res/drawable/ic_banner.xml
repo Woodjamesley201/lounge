@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <path
+        android:fillColor="#0E0C0A"
+        android:pathData="M0,0h320v180h-320z" />
+    <!-- Warm room glow, top-left -->
+    <path
+        android:fillColor="#2A1C10"
+        android:pathData="M-20,-20a140,90 0,1 0,280 0a140,90 0,1 0,-280 0z" />
+    <!-- Pool of light under the lamp -->
+    <path
+        android:fillColor="#3A2A18"
+        android:pathData="M36,112a50,24 0,1 0,100 0a50,24 0,1 0,-100 0z" />
+    <!-- Shade -->
+    <path
+        android:fillColor="#E8A05C"
+        android:pathData="M66,42L110,42L128,76L48,76Z" />
+    <path
+        android:fillColor="#F0C48A"
+        android:pathData="M51,74h74v4h-74z" />
+    <!-- Stem -->
+    <path
+        android:fillColor="#B5ADA3"
+        android:pathData="M85,76h6v48h-6z" />
+    <path
+        android:fillColor="#C4783A"
+        android:pathData="M88,76m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
+    <!-- Base -->
+    <path
+        android:fillColor="#B5ADA3"
+        android:pathData="M66,122h44a4,4 0,0 1,4 4v4a4,4 0,0 1,-4 4H66a4,4 0,0 1,-4 -4v-4a4,4 0,0 1,4 -4z" />
+    <!-- Wordmark bars suggesting "Lounge" at a glance, not a logo copy:
+         a simple serif-like L mark and a warm rule. -->
+    <path
+        android:fillColor="#F3EDE4"
+        android:pathData="M168,68h8v48h-8z" />
+    <path
+        android:fillColor="#F3EDE4"
+        android:pathData="M168,108h36v8h-36z" />
+    <path
+        android:fillColor="#E8A05C"
+        android:pathData="M168,128h88v3h-88z" />
+</vector>
