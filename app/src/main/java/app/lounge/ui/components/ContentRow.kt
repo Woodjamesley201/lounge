@@ -24,7 +24,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,16 +32,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -50,59 +45,29 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.lounge.media.MediaEntry
+import app.lounge.ui.glass.LiquidGlass
+import app.lounge.ui.glass.TitleArtwork
+import app.lounge.ui.glass.glassFocus
+import app.lounge.ui.glass.rememberLocalArtwork
 import app.lounge.ui.theme.Ember
 import app.lounge.ui.theme.LocalLoungeMetrics
 import app.lounge.ui.theme.loungeTween
 
-enum class TileKind { FILM, SHOW, PHOTO }
-
-data class LoungeTile(
-    val id: String,
-    val title: String,
-    val subtitle: String? = null,
-    val progress: Float? = null,
-    val kind: TileKind = TileKind.FILM,
-)
-
-data class TilePalette(
-    val deep: Color,
-    val mid: Color,
-    val light: Color,
-)
-
-fun paletteFor(id: String): TilePalette {
-    val palettes = listOf(
-        TilePalette(Color(0xFF3A2218), Color(0xFF8C4A2E), Color(0xFFE8A05C)),
-        TilePalette(Color(0xFF241820), Color(0xFF6A3A52), Color(0xFFE0A8B0)),
-        TilePalette(Color(0xFF1A2418), Color(0xFF3E5A38), Color(0xFFC8C070)),
-        TilePalette(Color(0xFF1C1A16), Color(0xFF4A4034), Color(0xFFD4C4A8)),
-        TilePalette(Color(0xFF2A1810), Color(0xFFA05630), Color(0xFFF0B070)),
-        TilePalette(Color(0xFF2A1014), Color(0xFF7A3038), Color(0xFFE09080)),
-        TilePalette(Color(0xFF2A2410), Color(0xFF8A6A28), Color(0xFFF0D078)),
-        TilePalette(Color(0xFF10201E), Color(0xFF2A5854), Color(0xFFA8D0C4)),
-    )
-    val index = (id.hashCode().and(0x7FFF_FFFF)) % palettes.size
-    return palettes[index]
-}
-
 /**
- * A labeled horizontal row of tiles. Owner: UI Isaiah.
- *
- * Focus is visible without hover: a warm ember ring, a soft glow, and a
- * gentle scale. D-pad / remote focus brings the tile into view.
+ * A labeled shelf. Focus is a glass rim and a slight scale, visible from the couch.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ContentRow(
     title: String,
-    tiles: List<LoungeTile>,
+    tiles: List<MediaEntry>,
     modifier: Modifier = Modifier,
     square: Boolean = false,
     initialFocusIndex: Int? = null,
     initialFocusRequester: FocusRequester? = null,
-    onTileClick: (LoungeTile) -> Unit = {},
+    onTileClick: (MediaEntry) -> Unit = {},
 ) {
     val metrics = LocalLoungeMetrics.current
     val listState = rememberLazyListState()
@@ -122,15 +87,13 @@ fun ContentRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .focusGroup(),
-            contentPadding = PaddingValues(
-                horizontal = metrics.screenPadding - metrics.focusPad,
-            ),
+            contentPadding = PaddingValues(horizontal = metrics.screenPadding - metrics.focusPad),
             horizontalArrangement = Arrangement.spacedBy(metrics.tileGap),
         ) {
             itemsIndexed(tiles, key = { _, tile -> tile.id }) { index, tile ->
                 val requester = if (index == initialFocusIndex) initialFocusRequester else null
                 TileCard(
-                    tile = tile,
+                    entry = tile,
                     square = square,
                     focusRequester = requester,
                     onClick = { onTileClick(tile) },
@@ -143,7 +106,7 @@ fun ContentRow(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TileCard(
-    tile: LoungeTile,
+    entry: MediaEntry,
     modifier: Modifier = Modifier,
     square: Boolean = false,
     focusRequester: FocusRequester? = null,
@@ -159,13 +122,26 @@ fun TileCard(
     LaunchedEffect(focused) {
         if (focused) bringIntoView.bringIntoView()
     }
-    val targetScale = when {
-        focused -> metrics.focusScale
-        pressed -> 0.98f
-        else -> 1f
-    }
-    val scale by animateFloatAsState(targetScale, animationSpec = loungeTween(), label = "tile-scale")
-    val glow by animateFloatAsState(if (focused) 1f else 0f, animationSpec = loungeTween(), label = "tile-glow")
+    val scale by animateFloatAsState(
+        targetValue = when {
+            focused -> metrics.focusScale
+            pressed -> 0.98f
+            else -> 1f
+        },
+        animationSpec = loungeTween(),
+        label = "tile-scale",
+    )
+    val emphasis by animateFloatAsState(
+        if (focused) 1f else 0f,
+        loungeTween(),
+        label = "tile-glass",
+    )
+    val artwork = rememberLocalArtwork(
+        uri = entry.uri,
+        enabled = entry.local,
+        sizePx = if (metrics.isTelevision) 720 else 480,
+    )
+    val description = entry.subtitle?.let { "${entry.title}, $it" } ?: entry.title
 
     Column(
         modifier = modifier
@@ -177,26 +153,54 @@ fun TileCard(
                 scaleX = scale
                 scaleY = scale
             }
-            .drawFocusGlow(glow, metrics.tileCorner, metrics.focusStroke)
+            .glassFocus(emphasis, metrics.tileCorner, metrics.focusStroke)
             .clickable(
                 interactionSource = interaction,
                 indication = null,
                 role = Role.Button,
                 onClick = onClick,
             )
-            .semantics { contentDescription = tile.subtitle?.let { "${tile.title}, $it" } ?: tile.title },
+            .semantics { contentDescription = description },
     ) {
-        TileArt(
-            tile = tile,
+        LiquidGlass(
             modifier = Modifier
                 .width(width)
                 .height(height),
             corner = metrics.tileCorner,
-            focused = focused,
-        )
+            emphasis = emphasis,
+        ) {
+            TitleArtwork(
+                motif = entry.art,
+                seed = entry.id.hashCode(),
+                image = artwork,
+                modifier = Modifier.fillMaxSize(),
+            )
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(if (metrics.isTelevision) 48.dp else 36.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.45f)),
+                        ),
+                    ),
+            )
+            val progress = entry.progress
+            if (progress != null) {
+                GlassProgress(
+                    progress = progress,
+                    emphasized = focused,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                )
+            }
+        }
         Spacer(Modifier.height(if (metrics.isTelevision) 12.dp else 8.dp))
         Text(
-            text = tile.title,
+            text = entry.title,
             style = MaterialTheme.typography.bodyMedium,
             fontSize = metrics.tileTitleSize,
             fontWeight = FontWeight.Medium,
@@ -204,9 +208,9 @@ fun TileCard(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        if (tile.subtitle != null) {
+        if (entry.subtitle != null) {
             Text(
-                text = tile.subtitle,
+                text = entry.subtitle,
                 style = MaterialTheme.typography.bodySmall,
                 color = Ember.CreamDim,
                 maxLines = 1,
@@ -217,144 +221,23 @@ fun TileCard(
 }
 
 @Composable
-fun TileArt(
-    tile: LoungeTile,
-    modifier: Modifier = Modifier,
-    corner: Dp = 14.dp,
-    focused: Boolean = false,
-) {
-    val palette = remember(tile.id) { paletteFor(tile.id) }
-    val shape = RoundedCornerShape(corner)
-    Box(
-        modifier = modifier
-            .clip(shape)
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(palette.deep, palette.mid),
-                    start = Offset.Zero,
-                    end = Offset(400f, 800f),
-                ),
-            ),
-    ) {
-        Canvas(Modifier.fillMaxSize()) {
-            when (tile.kind) {
-                TileKind.PHOTO -> {
-                    // A window: warm panes, dark muntins — looking out of a room.
-                    val inset = size.minDimension * 0.14f
-                    val paneW = (size.width - inset * 3f) / 2f
-                    val paneH = (size.height - inset * 3f) / 2f
-                    val glow = palette.light.copy(alpha = 0.55f)
-                    for (r in 0..1) for (c in 0..1) {
-                        val x = inset + c * (paneW + inset)
-                        val y = inset + r * (paneH + inset)
-                        drawRoundRect(
-                            color = glow,
-                            topLeft = Offset(x, y),
-                            size = Size(paneW, paneH),
-                            cornerRadius = CornerRadius(8f, 8f),
-                        )
-                    }
-                }
-                TileKind.SHOW -> {
-                    // Two stacked "episodes" as soft bars, like stacked stills.
-                    drawRoundRect(
-                        color = palette.light.copy(alpha = 0.22f),
-                        topLeft = Offset(size.width * 0.12f, size.height * 0.14f),
-                        size = Size(size.width * 0.76f, size.height * 0.36f),
-                        cornerRadius = CornerRadius(12f, 12f),
-                    )
-                    drawRoundRect(
-                        color = palette.light.copy(alpha = 0.38f),
-                        topLeft = Offset(size.width * 0.18f, size.height * 0.36f),
-                        size = Size(size.width * 0.76f, size.height * 0.42f),
-                        cornerRadius = CornerRadius(12f, 12f),
-                    )
-                }
-                TileKind.FILM -> {
-                    // A wide cinematic light and a soft off-center lamp bloom.
-                    drawOval(
-                        brush = Brush.radialGradient(
-                            colors = listOf(palette.light.copy(alpha = 0.45f), Color.Transparent),
-                            center = Offset(size.width * 0.78f, size.height * 0.22f),
-                            radius = size.minDimension * 0.7f,
-                        ),
-                    )
-                    val barH = size.height * 0.08f
-                    drawRect(palette.deep.copy(alpha = 0.45f), topLeft = Offset(0f, 0f), size = Size(size.width, barH))
-                    drawRect(palette.deep.copy(alpha = 0.45f), topLeft = Offset(0f, size.height - barH), size = Size(size.width, barH))
-                }
-            }
-        }
-        // Bottom fade so a future title-on-art would sit cleanly; also grounds the progress.
-        Box(
-            Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .height(48.dp)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color.Transparent, Ember.Night.copy(alpha = 0.55f)),
-                    ),
-                ),
-        )
-        val progress = tile.progress
-        if (progress != null) {
-            ProgressEmber(
-                progress = progress.coerceIn(0f, 1f),
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                emphasized = focused,
-            )
-        }
-    }
-}
-
-@Composable
-private fun ProgressEmber(
+fun GlassProgress(
     progress: Float,
     modifier: Modifier = Modifier,
     emphasized: Boolean = false,
 ) {
     Canvas(modifier.height(4.dp)) {
         val radius = CornerRadius(size.height / 2f, size.height / 2f)
-        drawRoundRect(Ember.Cream.copy(alpha = 0.22f), cornerRadius = radius)
-        val w = size.width * progress
-        if (w > 0f) {
+        drawRoundRect(Color.White.copy(alpha = 0.28f), cornerRadius = radius)
+        val width = size.width * progress.coerceIn(0f, 1f)
+        if (width > 0f) {
             drawRoundRect(
-                color = if (emphasized) Ember.AmberBright else Ember.Amber,
-                size = Size(w, size.height),
+                brush = Brush.horizontalGradient(
+                    listOf(Ember.Amber, if (emphasized) Color.White else Ember.AmberBright),
+                ),
+                size = Size(width, size.height),
                 cornerRadius = radius,
             )
         }
     }
 }
-
-/**
- * Warm ember ring and a soft outer glow. Drawn behind the card so focus is
- * obvious from the couch, and it does not depend on hover or a mouse.
- */
-fun Modifier.drawFocusGlow(glow: Float, corner: Dp, stroke: Dp): Modifier = this.then(
-    Modifier.drawBehind {
-        if (glow <= 0.01f) return@drawBehind
-        val cornerPx = corner.toPx()
-        val strokePx = stroke.toPx()
-        val inset = strokePx / 2f
-        // Soft outer wash
-        val wash = Ember.Amber.copy(alpha = 0.22f * glow)
-        drawRoundRect(
-            color = wash,
-            topLeft = Offset(-strokePx * 1.6f, -strokePx * 1.6f),
-            size = Size(size.width + strokePx * 3.2f, size.height + strokePx * 3.2f),
-            cornerRadius = CornerRadius(cornerPx + strokePx * 1.6f, cornerPx + strokePx * 1.6f),
-        )
-        drawRoundRect(
-            color = Ember.AmberBright.copy(alpha = 0.95f * glow),
-            topLeft = Offset(inset, inset),
-            size = Size(size.width - strokePx, size.height - strokePx),
-            cornerRadius = CornerRadius(cornerPx, cornerPx),
-            style = Stroke(width = strokePx),
-        )
-    },
-)

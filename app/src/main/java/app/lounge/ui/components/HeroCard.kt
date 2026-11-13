@@ -1,6 +1,7 @@
 package app.lounge.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -9,12 +10,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,28 +21,38 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.lounge.media.MediaEntry
+import app.lounge.ui.glass.LiquidGlass
+import app.lounge.ui.glass.TitleArtwork
+import app.lounge.ui.glass.glassFocus
+import app.lounge.ui.glass.rememberLocalArtwork
 import app.lounge.ui.theme.Ember
 import app.lounge.ui.theme.LocalLoungeMetrics
 import app.lounge.ui.theme.loungeTween
 
 /**
- * Featured "pick back up" card for the tablet home — a wide, easy touch target
- * with remaining time and an ember progress tick.
+ * Wide glass feature for the thing to play next. The whole pane is the control.
  */
 @Composable
 fun HeroCard(
-    tile: LoungeTile,
+    entry: MediaEntry,
+    kicker: String,
+    action: String?,
     modifier: Modifier = Modifier,
+    focusRequester: FocusRequester? = null,
     onClick: () -> Unit = {},
 ) {
     val metrics = LocalLoungeMetrics.current
@@ -52,90 +61,146 @@ fun HeroCard(
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
         when {
-            focused -> 1.02f
+            focused -> if (metrics.isTelevision) 1.03f else 1.015f
             pressed -> 0.99f
             else -> 1f
         },
-        animationSpec = loungeTween(220),
+        animationSpec = loungeTween(),
         label = "hero-scale",
     )
-    val glow by animateFloatAsState(if (focused) 1f else 0f, animationSpec = loungeTween(), label = "hero-glow")
-    val shape = RoundedCornerShape(metrics.tileCorner + 2.dp)
+    val emphasis by animateFloatAsState(
+        if (focused) 1f else 0f,
+        loungeTween(),
+        label = "hero-glass",
+    )
+    val artwork = rememberLocalArtwork(
+        uri = entry.uri,
+        enabled = entry.local,
+        sizePx = if (metrics.isTelevision) 1280 else 960,
+    )
+    val corner = metrics.tileCorner + 4.dp
+    val description = buildString {
+        append(kicker)
+        append(", ")
+        append(entry.title)
+        entry.subtitle?.let {
+            append(", ")
+            append(it)
+        }
+        action?.let {
+            append(", ")
+            append(it)
+        }
+    }
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(metrics.heroHeight)
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
-            .drawFocusGlow(glow, metrics.tileCorner + 2.dp, metrics.focusStroke)
+            .glassFocus(emphasis, corner, metrics.focusStroke)
             .clickable(
                 interactionSource = interaction,
                 indication = null,
                 role = Role.Button,
                 onClick = onClick,
-            ),
-    ) {
-        Box(Modifier.fillMaxSize().clip(shape)) {
-        TileArt(tile = tile, corner = metrics.tileCorner + 2.dp, focused = focused, modifier = Modifier.fillMaxSize())
-        Box(
-            Modifier
-                .fillMaxSize()
-                .drawBehind {
-                    drawRect(
-                        Brush.horizontalGradient(
-                            0f to Ember.Night.copy(alpha = 0.55f),
-                            0.55f to Ember.Night.copy(alpha = 0.15f),
-                            1f to Color.Transparent,
-                        ),
-                    )
-                },
-        )
-        Column(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .fillMaxHeight()
-                .padding(horizontal = 24.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = "Pick back up",
-                style = MaterialTheme.typography.labelLarge,
-                color = Ember.Amber,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 1.2.sp,
             )
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            .semantics { contentDescription = description },
+    ) {
+        LiquidGlass(
+            modifier = Modifier.fillMaxSize(),
+            corner = corner,
+            emphasis = emphasis,
+        ) {
+            TitleArtwork(
+                motif = entry.art,
+                seed = entry.id.hashCode(),
+                image = artwork,
+                modifier = Modifier.fillMaxSize(),
+            )
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(metrics.heroHeight * 0.62f)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Transparent, Color(0xFF070A14).copy(alpha = 0.72f)),
+                        ),
+                    ),
+            )
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(horizontal = if (metrics.isTelevision) 36.dp else 22.dp)
+                    .padding(bottom = if (metrics.isTelevision) 28.dp else 18.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
                 Text(
-                    text = tile.title,
+                    text = kicker,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Ember.AmberBright,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 1.1.sp,
+                )
+                Text(
+                    text = entry.title,
                     style = MaterialTheme.typography.headlineMedium,
                     fontFamily = FontFamily.Serif,
                     fontWeight = FontWeight.SemiBold,
                     color = Ember.Cream,
-                    fontSize = 28.sp,
+                    fontSize = if (metrics.isTelevision) 44.sp else 30.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (tile.subtitle != null) {
+                    if (!entry.subtitle.isNullOrBlank()) {
                         Text(
-                            text = tile.subtitle,
+                            text = entry.subtitle,
                             style = MaterialTheme.typography.bodyMedium,
                             color = Ember.CreamMuted,
+                            fontSize = if (metrics.isTelevision) 18.sp else 14.sp,
                         )
                     }
+                    if (action != null) {
+                        Text(
+                            text = action,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = Ember.AmberBright,
+                            fontSize = if (metrics.isTelevision) 18.sp else 14.sp,
+                        )
+                    }
+                }
+                if (!entry.credit.isNullOrBlank()) {
                     Text(
-                        text = "Resume",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = Ember.AmberBright,
+                        text = entry.credit,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Ember.CreamDim,
+                        fontSize = if (metrics.isTelevision) 14.sp else 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
-        }
+            val progress = entry.progress
+            if (progress != null) {
+                GlassProgress(
+                    progress = progress,
+                    emphasized = focused,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                )
+            }
         }
     }
 }

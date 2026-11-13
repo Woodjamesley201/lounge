@@ -34,3 +34,7 @@ The public API for the UI is [`DisplayConnection`](app/src/main/java/app/lounge/
 ## How to preview TV mode without a TV
 
 Long-press the "Lounge" title, which calls `DisplayConnectionRepository.toggleDebugTelevision()`.
+
+## Playback
+
+The shelves play real video. Catalog, MediaStore scan, permissions, and the Media3 player live in `app.lounge.media`, `app.lounge.playback`, and `app.lounge.ui`. Jayden's wired monitor and the repository merge, and Mike's wireless monitor, stay as they are.
