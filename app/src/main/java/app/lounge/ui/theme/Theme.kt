@@ -3,12 +3,16 @@ package app.lounge.ui.theme
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.TweenSpec
 import androidx.compose.animation.core.tween
+import android.os.Build
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.platform.LocalInspectionMode
+import app.lounge.ui.glass.GlassBlurPolicy
+import app.lounge.ui.glass.LocalConservativeGraphics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -189,7 +193,16 @@ fun LoungeTheme(
     content: @Composable () -> Unit,
 ) {
     val metrics = if (isTelevision) TelevisionMetrics else TabletMetrics
-    CompositionLocalProvider(LocalLoungeMetrics provides metrics) {
+    val inspection = LocalInspectionMode.current
+    val conservative = !inspection && GlassBlurPolicy.useConservativeCanvas(
+        sdkInt = Build.VERSION.SDK_INT,
+        manufacturer = Build.MANUFACTURER,
+        brand = Build.BRAND,
+    )
+    CompositionLocalProvider(
+        LocalLoungeMetrics provides metrics,
+        LocalConservativeGraphics provides conservative,
+    ) {
         MaterialTheme(
             colorScheme = Colors,
             typography = LoungeTypography,

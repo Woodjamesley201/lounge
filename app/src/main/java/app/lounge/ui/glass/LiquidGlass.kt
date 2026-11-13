@@ -37,9 +37,9 @@ import app.lounge.ui.theme.Ember
  * A pane of Lounge glass.
  *
  * Where [GlassBlurPolicy] allows it, the pane blurs a slice of [drawAtmosphere]
- * with [RenderEffect]. Samsung devices and Android 16 do not take that path:
- * platform blur aborts the process during the first composition. They keep
- * the dusk slice, a milk veil, the specular streak, and the rim.
+ * with [RenderEffect]. Samsung devices and Android 16 do not take that path,
+ * and they do not redraw the radial room inside the card either. They keep
+ * a linear milk veil, the specular streak, and the rim.
  *
  * [refract] is false over a video or photo, where the surface should stay
  * translucent and let the picture show through instead of painting the room.
@@ -55,6 +55,7 @@ fun LiquidGlass(
     val shape = androidx.compose.foundation.shape.RoundedCornerShape(corner)
     val density = LocalDensity.current.density
     val inspection = LocalInspectionMode.current
+    val conservative = LocalConservativeGraphics.current
     val deviceBlur = !inspection && GlassBlurPolicy.deviceAllowsHardwareBlur(
         sdkInt = Build.VERSION.SDK_INT,
         manufacturer = Build.MANUFACTURER,
@@ -69,15 +70,22 @@ fun LiquidGlass(
     var root by remember { mutableStateOf(IntSize.Zero) }
     var placed by remember { mutableStateOf(false) }
 
+    val trackSlice = refract && !conservative
     Box(
         modifier
-            .onGloballyPositioned { coords ->
-                runCatching {
-                    origin = coords.positionInRoot()
-                    root = coords.findRootCoordinates().size
-                    placed = true
-                }
-            }
+            .then(
+                if (trackSlice) {
+                    Modifier.onGloballyPositioned { coords ->
+                        runCatching {
+                            origin = coords.positionInRoot()
+                            root = coords.findRootCoordinates().size
+                            placed = true
+                        }
+                    }
+                } else {
+                    Modifier
+                },
+            )
             .then(elevationLayer(deviceBlur, emphasis, shape)),
     ) {
         Box(Modifier.matchParentSize().clip(shape)) {
@@ -86,17 +94,31 @@ fun LiquidGlass(
                     .fillMaxSize()
                     .then(blurLayer(blur, refract)),
             ) {
-                if (refract && placed && root.width > 0 && root.height > 0) {
-                    androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-                        drawAtmosphere(origin, Size(root.width.toFloat(), root.height.toFloat()))
+                if (conservative && refract) {
+                    Box(
+                        Modifier.fillMaxSize().background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color.White.copy(alpha = 0.16f),
+                                    Color(0xFF9BB0C8).copy(alpha = 0.10f),
+                                    Color.White.copy(alpha = 0.05f),
+                                ),
+                            ),
+                        ),
+                    )
+                } else {
+                    if (refract && placed && root.width > 0 && root.height > 0) {
+                        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                            drawAtmosphere(origin, Size(root.width.toFloat(), root.height.toFloat()))
+                        }
                     }
+                    val veil = when {
+                        !refract -> Color.Black.copy(alpha = 0.40f)
+                        blur != null -> Color.White.copy(alpha = 0.08f)
+                        else -> Color(0xFFD7E3F4).copy(alpha = 0.22f)
+                    }
+                    Box(Modifier.fillMaxSize().background(veil))
                 }
-                val veil = when {
-                    !refract -> Color.Black.copy(alpha = 0.40f)
-                    blur != null -> Color.White.copy(alpha = 0.08f)
-                    else -> Color(0xFFD7E3F4).copy(alpha = 0.22f)
-                }
-                Box(Modifier.fillMaxSize().background(veil))
             }
         }
         Box(Modifier.clip(shape)) {

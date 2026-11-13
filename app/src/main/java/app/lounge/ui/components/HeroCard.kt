@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.lounge.media.MediaEntry
 import app.lounge.ui.glass.LiquidGlass
+import app.lounge.ui.glass.LocalConservativeGraphics
 import app.lounge.ui.glass.TitleArtwork
 import app.lounge.ui.glass.glassFocus
 import app.lounge.ui.glass.rememberLocalArtwork
@@ -93,15 +94,22 @@ fun HeroCard(
         }
     }
 
+    val conservative = LocalConservativeGraphics.current
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(metrics.heroHeight)
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
+            .then(
+                if (conservative) {
+                    Modifier
+                } else {
+                    Modifier.graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    }
+                },
+            )
             .glassFocus(emphasis, corner, metrics.focusStroke)
             .clickable(
                 interactionSource = interaction,

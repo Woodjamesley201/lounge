@@ -2,11 +2,11 @@
 
 A living-room app for Android tablets. On the tablet it is a touch-friendly media home. When a bigger display is connected — wirelessly, or over HDMI on devices that support it — it switches to a 10-foot TV layout.
 
-The home is translucent glass over a dusk room: backdrop blur on Android 12–15 when the GPU can do it, and a frosted veil, specular streak, and rim everywhere else. Samsung devices and Android 16 do not call platform blur — on the Galaxy Tab A9 that call aborted the process during the splash. The lamp wordmark is still Lounge.
+The home is translucent glass over a dusk room: backdrop blur on Android 12–15 when the GPU can do it, and a frosted veil, specular streak, and rim everywhere else. Samsung devices and Android 16 do not call platform blur, and they do not paint the stacked radial dusk shaders either. On the Galaxy Tab A9 those shaders were still aborting the GPU at the lamp splash after 0.2.1. Those devices get a linear dusk, a milk veil, and a solid lamp glow. The first frame is a flat night color, and display and library startup wait until that frame has been drawn. The lamp wordmark is still Lounge.
 
 First device: Samsung Galaxy Tab A9 (SM-X110). That model cannot output video over USB-C HDMI; wireless (Smart View or Cast) is the path that works.
 
-This is a **debug build**, not a Play Store release. Do not ship the debug APK as a store listing. Version name `0.2.1` is the in-app version; release tags are cut separately.
+This is a **debug build**, not a Play Store release. Do not ship the debug APK as a store listing. Version name `0.2.2` is the in-app version; release tags are cut separately.
 
 ## Build
 

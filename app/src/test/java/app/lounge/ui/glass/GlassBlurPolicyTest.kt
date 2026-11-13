@@ -33,6 +33,21 @@ class GlassBlurPolicyTest {
     }
 
     @Test
+    fun samsungAndAndroid16StayOnTheLinearCanvas() {
+        assertTrue(GlassBlurPolicy.useConservativeCanvas(36, "samsung", "samsung"))
+        assertTrue(GlassBlurPolicy.useConservativeCanvas(36, "Google", "google"))
+        assertTrue(GlassBlurPolicy.useConservativeCanvas(34, "samsung", "samsung"))
+        assertTrue(GlassBlurPolicy.useConservativeCanvas(26, "Samsung Electronics", "samsung"))
+    }
+
+    @Test
+    fun otherDevicesKeepTheRadialRoom() {
+        assertFalse(GlassBlurPolicy.useConservativeCanvas(34, "Google", "google"))
+        assertFalse(GlassBlurPolicy.useConservativeCanvas(33, "Google", "google"))
+        assertFalse(GlassBlurPolicy.useConservativeCanvas(26, "Google", "google"))
+    }
+
+    @Test
     fun zeroSizeLayerIsNotBlurred() {
         assertFalse(GlassBlurPolicy.layerIsLargeEnough(0f, 200f))
         assertFalse(GlassBlurPolicy.layerIsLargeEnough(200f, 1f))
