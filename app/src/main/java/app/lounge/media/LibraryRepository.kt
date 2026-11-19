@@ -30,14 +30,18 @@ class LibraryRepository(
         appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
     private val accessPrefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    private val _snapshot = MutableStateFlow(publishValue(scanning = false))
-    val snapshot: StateFlow<LibrarySnapshot> = _snapshot.asStateFlow()
-
+    // These must be initialised before _snapshot below: publishValue() reads
+    // them during construction. Declared after it (0.2.0-0.2.2) they were still
+    // null at that point, and assembleLibrary() threw a NullPointerException
+    // on every launch.
     private var scope: CoroutineScope? = null
     private var started = false
     private var localVideos: List<MediaEntry> = emptyList()
     private var photos: List<MediaEntry> = emptyList()
     private var scanning = false
+
+    private val _snapshot = MutableStateFlow(publishValue(scanning = false))
+    val snapshot: StateFlow<LibrarySnapshot> = _snapshot.asStateFlow()
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) = onNetworkChanged()

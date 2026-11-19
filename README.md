@@ -6,7 +6,12 @@ The home is translucent glass over a dusk room: backdrop blur on Android 12–15
 
 First device: Samsung Galaxy Tab A9 (SM-X110). That model cannot output video over USB-C HDMI; wireless (Smart View or Cast) is the path that works.
 
-This is a **debug build**, not a Play Store release. Do not ship the debug APK as a store listing. Version name `0.2.2` is the in-app version; release tags are cut separately.
+This is a **debug build**, not a Play Store release. Do not ship the debug APK as a store listing. Version name `0.2.3` is the in-app version; release tags are cut separately.
+
+## What's new in 0.2.3
+
+- Fixed the launch crash in 0.2.0–0.2.2. The library read its local video and photo lists before they were initialized, so the app closed right after the splash on every device. Reproduced and verified on an Android 16 (API 36) emulator.
+- If Lounge ever crashes, the next launch shows the error (stack trace) with a Continue button, so it can be reported.
 
 ## Build
 

@@ -15,9 +15,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.lounge.diagnostics.CrashReport
 import app.lounge.display.DisplayConnectionRepository
 import app.lounge.media.LibraryRepository
 import app.lounge.playback.PlaybackStore
+import app.lounge.ui.crash.CrashReportScreen
 import app.lounge.ui.theme.Ember
 
 class MainActivity : ComponentActivity() {
@@ -37,10 +39,22 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        CrashReport.install(this)
         enableEdgeToEdge()
+        val previousCrash = CrashReport.pending(this)
         setContent {
+            var crashReport by remember { mutableStateOf(previousCrash) }
             var pastFirstFrame by remember { mutableStateOf(false) }
-            if (!pastFirstFrame) {
+            val report = crashReport
+            if (report != null) {
+                CrashReportScreen(
+                    report = report,
+                    onContinue = {
+                        CrashReport.clear(this@MainActivity)
+                        crashReport = null
+                    },
+                )
+            } else if (!pastFirstFrame) {
                 Box(Modifier.fillMaxSize().background(Ember.Night))
                 LaunchedEffect(Unit) {
                     withFrameNanos { }
